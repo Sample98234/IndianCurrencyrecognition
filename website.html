@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Classifier</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            margin-bottom: 25px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: #1a2a6c;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #fdbb2d;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2 i {
+            color: #b21f1f;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(to right, #1a2a6c, #b21f1f);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(to right, #fdbb2d, #b21f1f);
+        }
+
+        .upload-area {
+            border: 3px dashed #1a2a6c;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: rgba(26, 42, 108, 0.05);
+        }
+
+        .upload-area i {
+            font-size: 3rem;
+            color: #1a2a6c;
+            margin-bottom: 15px;
+        }
+
+        .upload-area p {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(to right, #1a2a6c, #b21f1f);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        .model-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .model-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .model-card:hover {
+            transform: scale(1.03);
+        }
+
+        .model-card.best {
+            border: 3px solid #fdbb2d;
+            background: #fff9e6;
+        }
+
+        .model-name {
+            font-weight: bold;
+            color: #1a2a6c;
+            margin-bottom: 10px;
+        }
+
+        .model-accuracy {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #b21f1f;
+        }
+
+        .classification-report {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #1a2a6c;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .confusion-matrix {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .matrix-cell {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            margin-top: 30px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 5px solid #1a2a6c;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-money-bill-wave"></i> Currency Classifier</h1>
+            <p>Upload currency images to classify them using machine learning models</p>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h2><i class="fas fa-upload"></i> Upload Dataset</h2>
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Upload Currency Images</h3>
+                    <p>Click to upload or drag and drop a ZIP file containing currency images</p>
+                    <p class="small">Supported formats: ZIP file with folders for each currency class</p>
+                    <input type="file" id="fileInput" accept=".zip" style="display: none;">
+                </div>
+                <button class="btn" id="processBtn" disabled><i class="fas fa-cogs"></i> Process Dataset</button>
+                
+                <div class="progress-container" id="progressContainer">
+                    <p>Processing images: <span id="progressText">0%</span></p>
+                    <div class="progress-bar">
+                        <div class="progress" id="progressBar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-info-circle"></i> Dataset Information</h2>
+                <div id="datasetInfo">
+                    <p>No dataset uploaded yet. Please upload a ZIP file containing currency images organized in folders by class.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-sliders-h"></i> Model Training</h2>
+            <p>Select which models to train on the currency dataset:</p>
+            <div style="margin: 15px 0;">
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="svmCheckbox" checked> Support Vector Machine (SVM)
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="rfCheckbox" checked> Random Forest
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="knnCheckbox" checked> K-Nearest Neighbors (KNN)
+                </label>
+            </div>
+            <button class="btn btn-secondary" id="trainBtn" disabled><i class="fas fa-brain"></i> Train Models</button>
+            
+            <div class="loading" id="trainingLoading">
+                <div class="spinner"></div>
+                <p>Training models... This may take a few moments.</p>
+            </div>
+        </div>
+
+        <div class="card results" id="resultsSection">
+            <h2><i class="fas fa-chart-bar"></i> Model Performance</h2>
+            
+            <div class="model-results" id="modelResults">
+                <!-- Model results will be inserted here -->
+            </div>
+            
+            <h3 style="margin-top: 30px;">Accuracy Comparison</h3>
+            <div class="chart-container">
+                <canvas id="accuracyChart"></canvas>
+            </div>
+            
+            <h3 style="margin-top: 30px;">Classification Report</h3>
+            <div class="classification-report" id="classificationReport">
+                <!-- Classification report will be inserted here -->
+            </div>
+            
+            <h3 style="margin-top: 30px;">Confusion Matrix</h3>
+            <div class="confusion-matrix" id="confusionMatrix">
+                <!-- Confusion matrix will be inserted here -->
+            </div>
+            
+            <h3 style="margin-top: 30px;">Learning Curve</h3>
+            <div class="chart-container">
+                <canvas id="learningCurve"></canvas>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Currency Classifier Web Application | Machine Learning Demo</p>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const datasetInfo = document.getElementById('datasetInfo');
+        const trainBtn = document.getElementById('trainBtn');
+        const trainingLoading = document.getElementById('trainingLoading');
+        const resultsSection = document.getElementById('resultsSection');
+        const modelResults = document.getElementById('modelResults');
+        const classificationReport = document.getElementById('classificationReport');
+        const confusionMatrix = document.getElementById('confusionMatrix');
+        
+        // Event Listeners
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = 'rgba(26, 42, 108, 0.1)';
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.background = '';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = '';
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelection();
+            }
+        });
+        
+        fileInput.addEventListener('change', handleFileSelection);
+        processBtn.addEventListener('click', processDataset);
+        trainBtn.addEventListener('click', trainModels);
+        
+        // Variables
+        let dataset = null;
+        let models = {
+            "SVC_rbf": { trained: false, cv: 0, test: 0 },
+            "RandomForest": { trained: false, cv: 0, test: 0 },
+            "KNN": { trained: false, cv: 0, test: 0 }
+        };
+        
+        // Functions
+        function handleFileSelection() {
+            if (fileInput.files.length) {
+                const file = fileInput.files[0];
+                if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
+                    uploadArea.innerHTML = `
+                        <i class="fas fa-check-circle" style="color: #4CAF50;"></i>
+                        <h3>${file.name}</h3>
+                        <p>Ready to process</p>
+                    `;
+                    processBtn.disabled = false;
+                    datasetInfo.innerHTML = `
+                        <p><strong>File:</strong> ${file.name}</p>
+                        <p><strong>Size:</strong> ${(file.size / (1024*1024)).toFixed(2)} MB</p>
+                        <p>Click "Process Dataset" to extract and analyze the images.</p>
+                    `;
+                } else {
+                    alert('Please upload a ZIP file.');
+                    fileInput.value = '';
+                }
+            }
+        }
+        
+        function processDataset() {
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            
+            // Simulate processing
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    
+                    // Simulate completion
+                    setTimeout(() => {
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '100%';
+                        
+                        // Update dataset info with simulated results
+                        datasetInfo.innerHTML = `
+                            <p><strong>Dataset processed successfully!</strong></p>
+                            <p><strong>Classes detected:</strong> 5 (INR, USD, EUR, GBP, JPY)</p>
+                            <p><strong>Total images:</strong> 450</p>
+                            <p><strong>Training set:</strong> 360 images</p>
+                            <p><strong>Test set:</strong> 90 images</p>
+                            <p><strong>Feature size:</strong> 1764 features per image</p>
+                        `;
+                        
+                        trainBtn.disabled = false;
+                    }, 500);
+                } else {
+                    progressBar.style.width = `${progress}%`;
+                    progressText.textContent = `${Math.round(progress)}%`;
+                }
+            }, 200);
+        }
+        
+        function trainModels() {
+            trainingLoading.style.display = 'block';
+            trainBtn.disabled = true;
+            
+            // Get selected models
+            const selectedModels = [];
+            if (document.getElementById('svmCheckbox').checked) selectedModels.push('SVC_rbf');
+            if (document.getElementById('rfCheckbox').checked) selectedModels.push('RandomForest');
+            if (document.getElementById('knnCheckbox').checked) selectedModels.push('KNN');
+            
+            if (selectedModels.length === 0) {
+                alert('Please select at least one model to train.');
+                trainingLoading.style.display = 'none';
+                trainBtn.disabled = false;
+                return;
+            }
+            
+            // Simulate training process
+            let completed = 0;
+            selectedModels.forEach(model => {
+                setTimeout(() => {
+                    // Simulate training results
+                    const cvAccuracy = 75 + Math.random() * 20;
+                    const testAccuracy = 70 + Math.random() * 20;
+                    
+                    models[model] = {
+                        trained: true,
+                        cv: cvAccuracy,
+                        test: testAccuracy
+                    };
+                    
+                    completed++;
+                    
+                    if (completed === selectedModels.length) {
+                        // All models trained
+                        setTimeout(() => {
+                            trainingLoading.style.display = 'none';
+                            displayResults();
+                        }, 1000);
+                    }
+                }, 1500 + Math.random() * 2000);
+            });
+        }
+        
+        function displayResults() {
+            resultsSection.style.display = 'block';
+            
+            // Find best model
+            let bestModel = null;
+            let bestAccuracy = 0;
+            
+            for (const [name, data] of Object.entries(models)) {
+                if (data.trained && data.test > bestAccuracy) {
+                    bestAccuracy = data.test;
+                    bestModel = name;
+                }
+            }
+            
+            // Display model results
+            modelResults.innerHTML = '';
+            for (const [name, data] of Object.entries(models)) {
+                if (data.trained) {
+                    const isBest = name === bestModel;
+                    modelResults.innerHTML += `
+                        <div class="model-card ${isBest ? 'best' : ''}">
+                            <div class="model-name">${name}</div>
+                            <div class="model-accuracy">${data.test.toFixed(2)}%</div>
+                            <div>Test Accuracy</div>
+                            <div style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                                CV: ${data.cv.toFixed(2)}%
+                            </div>
+                            ${isBest ? '<div style="margin-top: 5px; color: #fdbb2d;"><i class="fas fa-trophy"></i> Best Model</div>' : ''}
+                        </div>
+                    `;
+                }
+            }
+            
+            // Create accuracy chart
+            createAccuracyChart();
+            
+            // Create classification report
+            createClassificationReport();
+            
+            // Create confusion matrix
+            createConfusionMatrix();
+            
+            // Create learning curve
+            createLearningCurve();
+        }
+        
+        function createAccuracyChart() {
+            const ctx = document.getElementById('accuracyChart').getContext('2d');
+            const modelNames = [];
+            const cvAccuracies = [];
+            const testAccuracies = [];
+            
+            for (const [name, data] of Object.entries(models)) {
+                if (data.trained) {
+                    modelNames.push(name);
+                    cvAccuracies.push(data.cv);
+                    testAccuracies.push(data.test);
+                }
+            }
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: modelNames,
+                    datasets: [
+                        {
+                            label: 'CV Accuracy',
+                            data: cvAccuracies,
+                            backgroundColor: 'rgba(26, 42, 108, 0.7)',
+                            borderColor: 'rgba(26, 42, 108, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Test Accuracy',
+                            data: testAccuracies,
+                            backgroundColor: 'rgba(253, 187, 45, 0.7)',
+                            borderColor: 'rgba(253, 187, 45, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Accuracy (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createClassificationReport() {
+            // Simulated classification report
+            const classes = ['INR', 'USD', 'EUR', 'GBP', 'JPY'];
+            let reportHTML = '<table><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1-Score</th><th>Support</th></tr>';
+            
+            classes.forEach(cls => {
+                const precision = (80 + Math.random() * 15).toFixed(2);
+                const recall = (75 + Math.random() * 20).toFixed(2);
+                const f1 = (77 + Math.random() * 18).toFixed(2);
+                const support = Math.floor(15 + Math.random() * 10);
+                
+                reportHTML += `
+                    <tr>
+                        <td>${cls}</td>
+                        <td>${precision}%</td>
+                        <td>${recall}%</td>
+                        <td>${f1}%</td>
+                        <td>${support}</td>
+                    </tr>
+                `;
+            });
+            
+            reportHTML += '</table>';
+            classificationReport.innerHTML = reportHTML;
+        }
+        
+        function createConfusionMatrix() {
+            // Simulated confusion matrix
+            const classes = ['INR', 'USD', 'EUR', 'GBP', 'JPY'];
+            let matrixHTML = '<div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; text-align: center;">';
+            
+            // Header row
+            matrixHTML += '<div style="font-weight: bold; padding: 10px;"></div>';
+            classes.forEach(cls => {
+                matrixHTML += `<div style="font-weight: bold; padding: 10px;">${cls}</div>`;
+            });
+            
+            // Data rows
+            classes.forEach(trueClass => {
+                matrixHTML += `<div style="font-weight: bold; padding: 10px;">${trueClass}</div>`;
+                classes.forEach(predClass => {
+                    const value = trueClass === predClass 
+                        ? Math.floor(15 + Math.random() * 5) 
+                        : Math.floor(Math.random() * 3);
+                    
+                    // Color intensity based on value
+                    const intensity = trueClass === predClass ? 200 + value * 5 : 100;
+                    const color = trueClass === predClass 
+                        ? `rgb(26, 42, ${intensity})` 
+                        : `rgb(178, 31, 31, ${value/20})`;
+                    
+                    matrixHTML += `
+                        <div class="matrix-cell" style="background-color: ${color};">
+                            ${value}
+                        </div>
+                    `;
+                });
+            });
+            
+            matrixHTML += '</div>';
+            confusionMatrix.innerHTML = matrixHTML;
+        }
+        
+        function createLearningCurve() {
+            const ctx = document.getElementById('learningCurve').getContext('2d');
+            
+            // Generate simulated learning curve data
+            const trainingSizes = [50, 100, 150, 200, 250, 300, 350];
+            const trainScores = [60, 70, 75, 78, 82, 85, 87];
+            const valScores = [55, 65, 72, 76, 80, 82, 84];
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trainingSizes,
+                    datasets: [
+                        {
+                            label: 'Training Score',
+                            data: trainScores,
+                            borderColor: 'rgba(26, 42, 108, 1)',
+                            backgroundColor: 'rgba(26, 42, 108, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Validation Score',
+                            data: valScores,
+                            borderColor: 'rgba(253, 187, 45, 1)',
+                            backgroundColor: 'rgba(253, 187, 45, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Accuracy (%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Training Examples'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
